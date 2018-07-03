@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>ECharts</title>
+    <!-- 引入 echarts.js -->
+    <script src="echarts.min.js"></script>
+</head>
+<body>
+    <!-- 为 ECharts 准备一个具备大小（宽高）的 Dom -->
+    <div id="main" style="width:600px; height:400px;"></div>
+    <script>
+        // 基于准备好的 dom，初始化 echarts 实例
+        var element = document.querySelector('#main')
+        var myChart = echarts.init(element)
+        var log = console.log.bind(console)
+
+        var ajax = function(request) {
+            var r = new XMLHttpRequest()
+            r.open(request.method, request.url, true)
+            if (request.contentType != undefined) {
+                r.setRequestHeader('Content-Type', request.contentType)
+            }
+            r.onreadystatechange = function() {
+                if (r.readyState == 4) {
+                    request.callback(r.response)
+                }
+            }
+            if (request.method == 'GET') {
+                r.send()
+            } else {
+                r.send(request.data)
+            }
+        }
+
+        var convertDate = (date) => {
+            var d = {
+                1: '周一',
+                2: '周二',
+                3: '周三',
+                4: '周四',
+                5: '周五',
+                6: '周六',
+                7: '周日',
+            }
+            return d[date]
+        }
+
+        var dealWithData = (d) => {
+            var d = JSON.parse(d)
+            var items = d.HeWeather5[0].daily_forecast
+            var data = {
+                'date': [],
+                'highTmp': [],
+                'lowTmp': [],
+            }
+
+            for (var i = 0; i < items.length; i++) {
+                var date = new Date(items[i].date).getDay()
+                var tmpMax = items[i].tmp.max
+                var tmpMin = items[i].tmp.min
+
+                data.date.push(convertDate(date))
+                data.highTmp.push(Number(tmpMax))
+                data.lowTmp.push(tmpMin)
+            }
+            return data
+        }
+
+        var request = {
+            url: 'https://free-api.heweather.com/v5/forecast?city=beijing&key=584f18bcbbaa47c5ab09a7a281d8dc78',
+            method: 'GET',
+            data: '',
+            callback: (d) => {
+                var data = dealWithData(d)
+                var option = getOption(data.date, data.highTmp, data.lowTmp)
+
+                // 使用刚指定的配置项和数据显示图表。
+                myChart.setOption(option)
+            }
+        }
+
+        var getOption = (date, highTmp, lowTmp) => {
+            // 指定图表的配置项和数据
+            var option = {
+                title: {
+                    text: '北京未来三天气温变化',
+                    subtext: '纯属虚构'
+                },
+                tooltip: {
+                    trigger: 'axis'
+                },
+                legend: {
+                    data: ['最高气温','最低气温']
+                },
+                toolbox: {
+                    show: true,
+                    feature: {
+                        dataZoom: {
+                            yAxisIndex: 'none'
+                        },
+                        dataView: {readOnly: false},
+                        magicType: {type: ['line', 'bar']},
+                        restore: {},
+                        saveAsImage: {}
+                    }
+                },
+                xAxis:  {
+                    type: 'category',
+                    boundaryGap: false,
+                    data: date
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLabel: {
+                        formatter: '{value} °C'
+                    }
+                },
+                series: [
+                    {
+                        name: '最高气温',
+                        type: 'line',
+                        data: highTmp,
+                        markPoint: {
+                            data: [
+                                {type: 'max', name: '最大值'},
+                                {type: 'min', name: '最小值'}
+                            ]
+                        },
+                        markLine: {
+                            data: [
+                                {type: 'average', name: '平均值'}
+                            ]
+                        }
+                    },
+                    {
+                        name: '最低气温',
+                        type: 'line',
+                        data: lowTmp,
+                        markPoint: {
+                            data: [
+                                {name: '周最低', value: -2, xAxis: 1, yAxis: -1.5}
+                            ]
+                        },
+                        markLine: {
+                            data: [
+                                {type: 'average', name: '平均值'},
+                                [{
+                                    symbol: 'none',
+                                    x: '90%',
+                                    yAxis: 'max'
+                                }, {
+                                    symbol: 'circle',
+                                    label: {
+                                        normal: {
+                                            position: 'start',
+                                            formatter: '最大值'
+                                        }
+                                    },
+                                    type: 'max',
+                                    name: '最高点'
+                                }]
+                            ]
+                        }
+                    }
+                ]
+            }
+            return option
+        }
+
+        ajax(request)
+    </script>
+</body>
+</html>
